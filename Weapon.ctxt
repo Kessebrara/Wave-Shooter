@@ -1,0 +1,18 @@
+#BlueJ class context
+comment0.params=
+comment0.target=Weapon()
+comment1.params=attackSpeed\ magazineSize\ projectileRange\ projectileSpeed\ reloadSpeed
+comment1.target=Weapon(double,\ double,\ double,\ double,\ double)
+comment2.params=w
+comment2.target=Weapon(Weapon)
+comment3.params=
+comment3.target=double\ getAttackSpeed()
+comment4.params=
+comment4.target=double\ getMagazineSize()
+comment5.params=
+comment5.target=double\ getProjectileRange()
+comment6.params=
+comment6.target=double\ getProjectileSpeed()
+comment7.params=
+comment7.target=double\ getReloadSpeed()
+numComments=8
