@@ -17,6 +17,7 @@ import javafx.stage.WindowEvent;
 import java.util.Random;
 import javafx.scene.media.AudioClip;
 import java.net.URL;
+import javafx.scene.input.MouseEvent;
 
 
 public class Test extends Application
@@ -35,13 +36,30 @@ public class Test extends Application
     double playerX = WIDTH/2;
     double playerY = HEIGHT/2;
     double playerSpeed = 5;
+    double playerWeaponCounter;
     boolean playerMovingLeft, playerMovingRight, playerMovingUp, playerMovingDown;
+    double playerMagazineCounter = 30;
+    boolean playerReloading;
+    double playerReloadingCounter;
     
+    double stalkerX, stalkerY = 64;
+    double stalkerCounter;
+    boolean stalkerMovingLeft;
+    AudioClip[] stalkersfx = new AudioClip[4];
+    
+    double[] bulletLife = new double[1024], bulletRotation = new double[1024], 
+        bulletX = new double[1024], bulletY = new double[1024];
+    
+        
+        
     Random random = new Random();
     
     Canvas canvas = new Canvas(WIDTH, HEIGHT);
     
-    AudioClip[] aks = new AudioClip[4];
+    AudioClip[] aks = new AudioClip[5];
+    AudioClip[] aksin = new AudioClip[5];
+    URL resource = getClass().getResource("sounds/ak47_reload.wav");
+    AudioClip akreload = new AudioClip(resource.toString());
     
     public static void main(String[] args) 
     {
@@ -50,13 +68,26 @@ public class Test extends Application
 
     @Override
     public void start(Stage stage) 
-    {
+    {/**
+        for(int i = 0; i < bulletLife.length; i++)
+        {
+            bulletX[i] = bulletY[i] = bulletLife[i] = bulletRotation[i] = 0;
+        }**/
+        
         stage.setTitle( "Collect the Money Bags!" );
+        
+        for(int i = 0; i < 5; i++)
+        {
+            URL resource = getClass().getResource("sounds/ak47_semi_"+i+".wav");
+            aks[i] = new AudioClip(resource.toString());
+            resource = getClass().getResource("sounds/ak47_semi_indoor_"+i+".wav");
+            aksin[i] = new AudioClip(resource.toString());
+        }
         
         for(int i = 0; i < 4; i++)
         {
-            URL resource = getClass().getResource("sounds/ak_semi_"+i+".wav");
-            aks[i] = new AudioClip(resource.toString());
+            URL resource = getClass().getResource("sounds/stalker_idle_"+i+".wav");
+            stalkersfx[i] = new AudioClip(resource.toString());
         }
 
         Group root = new Group();
@@ -66,62 +97,160 @@ public class Test extends Application
 
         ArrayList<String> input = new ArrayList<String>();
 
-        scene.setOnKeyPressed(
-            new EventHandler<KeyEvent>()
+        scene.setOnKeyPressed(new EventHandler<KeyEvent>()
+        {
+            public void handle(KeyEvent e)
             {
-                public void handle(KeyEvent e)
+                String key = e.getCode().toString();
+                if (!input.contains(key))
+                input.add(key);
+                
+                if(key == "W")
                 {
-                    String key = e.getCode().toString();
-                    if (!input.contains(key))
-                    input.add(key);
-                    
-                    if(key == "W")
-                    {
-                        playerMovingDown = false;
-                        playerMovingUp = true;
-                    }
-                    if(key == "A")
-                    {
-                        playerMovingLeft = true;
-                        playerMovingRight = false;
-                    }
-                    if(key == "S")
-                    {
-                        playerMovingDown = true;
-                        playerMovingUp = false;
-                    }
-                    if(key == "D")
-                    {
-                        playerMovingLeft = false;
-                        playerMovingRight = true;
-                    }
-                    if(key == "SPACE")
-                    {
-                        aks[random.nextInt(4)].play(1.0);
-                    }
-                    
-                }
-            });
-
-        scene.setOnKeyReleased(
-            new EventHandler<KeyEvent>()
-            {
-                public void handle(KeyEvent e)
-                {
-                    String key = e.getCode().toString();
-                    input.remove(key);
-                    
-                    if(key == "W")
-                    playerMovingUp = false;
-                    if(key == "A")
-                    playerMovingLeft = false;
-                    if(key == "S")
                     playerMovingDown = false;
-                    if(key == "D")
+                    playerMovingUp = true;
+                }
+                if(key == "A")
+                {
+                    playerMovingLeft = true;
                     playerMovingRight = false;
                 }
-            });
-
+                if(key == "S")
+                {
+                    playerMovingDown = true;
+                    playerMovingUp = false;
+                }
+                if(key == "D")
+                {
+                    playerMovingLeft = false;
+                    playerMovingRight = true;
+                }
+                
+            }
+        });
+        
+        scene.setOnKeyReleased(new EventHandler<KeyEvent>()
+        {
+            public void handle(KeyEvent e)
+            {
+                String key = e.getCode().toString();
+                input.remove(key);
+                
+                if(key == "W")
+                playerMovingUp = false;
+                if(key == "A")
+                playerMovingLeft = false;
+                if(key == "S")
+                playerMovingDown = false;
+                if(key == "D")
+                playerMovingRight = false;
+            }
+        });
+        
+        scene.setOnMousePressed(new EventHandler<MouseEvent>()
+        {
+            public void handle(MouseEvent e)
+            {
+                double mouseX = e.getX();
+                double mouseY = e.getY();
+                double rotation = Math.atan2(mouseY - playerY, mouseX - playerX);
+                if(playerMagazineCounter > 0)
+                {
+                    if(playerWeaponCounter <= 0)
+                    {
+                        int r = random.nextInt(4);
+                        
+                        aks[r].setBalance( (playerX - WIDTH/2) / (WIDTH/2));
+                        aksin[r].setBalance( (playerX / - WIDTH/2) / (WIDTH/2));
+                        
+                        playerWeaponCounter = .1;
+                        if(playerX >= 256 && playerY >= 256 && 
+                            playerX <= 352 && playerY <= 352)
+                            aksin[r].play(1.0);
+                        
+                        else
+                        aks[r].play(1.0);                        
+                        
+                        playerMagazineCounter--;
+                        for(int i = 0; i < bulletLife.length; i++)
+                        {
+                            if(bulletLife[i] <= 0)
+                            {
+                                bulletLife[i] = 4;
+                                bulletX[i] = playerX;
+                                bulletY[i] = playerY;
+                                bulletRotation[i] = rotation;
+                                break;                            
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if(playerWeaponCounter <= 0 && !playerReloading)
+                    {
+                        playerReloading = true;
+                        playerReloadingCounter = 3;
+                        akreload.play(1.0);
+                    }
+                }
+            }
+        });
+        
+        
+        
+        scene.setOnMouseDragged(new EventHandler<MouseEvent>()
+        {
+            public void handle(MouseEvent e)
+            {
+                double mouseX = e.getX();
+                double mouseY = e.getY();
+                double rotation = Math.atan2(mouseY - playerY, mouseX - playerX);
+                if(playerMagazineCounter > 0)
+                {
+                    if(playerWeaponCounter <= 0)
+                    {
+                        int r = random.nextInt(4);
+                        
+                        aks[r].setBalance( (playerX - WIDTH/2) / (WIDTH/2));
+                        aksin[r].setBalance( (playerX / - WIDTH/2) / (WIDTH/2));
+                        
+                        playerWeaponCounter = .1;
+                        if(playerX >= 256 && playerY >= 256 && 
+                            playerX <= 352 && playerY <= 352)
+                            aksin[r].play(1.0);
+                        
+                        else
+                        aks[r].play(1.0);                        
+                        
+                        playerMagazineCounter--;
+                        for(int i = 0; i < bulletLife.length; i++)
+                        {
+                            if(bulletLife[i] <= 0)
+                            {
+                                bulletLife[i] = 4;
+                                bulletX[i] = playerX;
+                                bulletY[i] = playerY;
+                                bulletRotation[i] = rotation;
+                                break;                            
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    if(playerWeaponCounter <= 0 && !playerReloading)
+                    {
+                        playerReloading = true;
+                        playerReloadingCounter = 3;
+                        akreload.play(1.0);
+                    }
+                }
+            }
+        });
+        
+        
+        
         GraphicsContext g = canvas.getGraphicsContext2D();
 
         Font font = Font.font( "Helvetica", FontWeight.BOLD, 24 );
@@ -176,29 +305,127 @@ public class Test extends Application
                     distance+= 128 * ET;
                 }
                 
+                if(playerReloading)
+                {
+                    playerReloadingCounter-= 1 * ET;
+                    if(playerReloadingCounter <= 0)
+                    {
+                        playerReloading = false;
+                        playerMagazineCounter = 30;
+                    }
+                }
+                
                 avg = distance/total;
                 
+                playerWeaponCounter-= 1 * ET;
+                
+                for(int i = 0; i < bulletLife.length; i++)
+                {
+                    if(bulletLife[i] > 0)
+                    {
+                        bulletLife[i] -= 1 * ET;
+                        bulletX[i]+= 512 * ET * Math.cos(bulletRotation[i]);
+                        bulletY[i]+= 512 * ET * Math.sin(bulletRotation[i]);
+                    }
+                }
                 
                 
                 
-                // collision detection
                 
                 
+                // collision detection                
+                
+                if(stalkerMovingLeft)
+                {
+                    stalkerX-= 256 * ET;
+                    if(stalkerX<= 0)
+                    stalkerMovingLeft = false;
+                }
+                
+                else
+                {
+                    stalkerX+= 256 * ET;
+                    
+                    if(stalkerX>= WIDTH)
+                    stalkerMovingLeft = true;
+                }
+                
+                stalkerCounter-= 1 * ET;
+                
+                if(stalkerCounter <= 0)
+                {
+                    int r = random.nextInt(4);
+                    stalkerCounter = 1 + random.nextInt(5);
+                    stalkersfx[r].setBalance( (stalkerX-WIDTH/2) / (WIDTH/2));
+                    stalkersfx[r].play();
+                }
                 // render 
                 
-                g.setFill(Color.WHITE);
+                g.setFill(Color.LIGHTGREY);
                 g.fillRect(0, 0, WIDTH, HEIGHT);
-                g.setFill(Color.GREEN);
-                                
-                g.setFill(Color.BLACK);
+                
+                g.setFill(Color.DARKGREY);
+                for(int r = 0; r < HEIGHT / 32; r++)
+                for(int c = r%2; c < WIDTH / 32; c+=2)
+                g.fillRect(c * 32, r * 32, 32, 32);
+                
+                g.setFill(Color.BROWN);
+                g.fillRect(8 * 32, 8 *32, 32, 32);
+                g.fillRect(9 * 32, 8 *32, 32, 32);
+                g.fillRect(10 * 32, 8 *32, 32, 32);
+                g.fillRect(8 * 32, 9 *32, 32, 32);
+                g.fillRect(10 * 32, 9 *32, 32, 32);
+                g.fillRect(8 * 32, 10 *32, 32, 32);
+                g.fillRect(9 * 32, 10 *32, 32, 32);
+                g.fillRect(10 * 32, 10 *32, 32, 32);
+                
+                g.setStroke(Color.YELLOW);
+                g.setLineWidth(3);
+                for(int i = 0; i < 4; i++)
+                if(stalkersfx[i].isPlaying())
+                {
+                    int radius = 32 + random.nextInt(32);
+                    g.strokeOval(stalkerX - radius, stalkerY - radius, radius * 2, radius * 2);
+                }
+                
+                g.setFill(Color.BLUE);
                 g.fillOval(playerX-8, playerY-8, 16, 16);
                 
+                
+                g.setStroke(Color.ORANGE);
+                g.setLineWidth(1);
+                
+                for(int i = 0; i < 5; i++)
+                if(aks[i].isPlaying() || aksin[i].isPlaying())
+                {
+                    int radius = 8 + random.nextInt(8);
+                    g.strokeOval(playerX - radius, playerY - radius, radius * 2, radius * 2);
+                }
+                
                 g.setFill(Color.RED);
-                g.fillText("Total elapsed time = "+(int)total, 16, 32);
-                g.fillText("Time since last calc = "+ET, 16, 48);
-                g.fillText("Pixels traveled = "+distance, 16, 64);
-                g.fillText("Avg distance per second = "+avg, 16, 80);
-                g.fillText("FPS = "+fps, 16, 96);
+                g.fillText("Magazine = "+playerMagazineCounter, 16, 16);
+                g.fillText("FPS = "+fps, 16, 32);
+                g.fillText("BulletLife 0 = "+bulletLife[0], 16, 48);
+                
+                g.fillOval(stalkerX - 16, stalkerY - 16, 32, 32);
+                
+                g.fillText("Balance = "+(playerX - WIDTH/2) / (WIDTH / 2), 16, 64);
+                
+                g.setFill(Color.BLACK);
+                for(int i = 0; i < bulletLife.length; i++)
+                if(bulletLife[i] > 0)
+                g.fillRect(bulletX[i] - 2, bulletY[i] - 2, 4, 4);
+                
+                
+                
+                for(int i = 0; i < bulletLife.length; i++)
+                if(bulletLife[i] > 0)
+                g.fillRect(bulletX[i] - 2, bulletY[i] - 2, 4, 4);
+                
+                g.setFill(Color.WHITE);
+                for(int i = 0; i < bulletLife.length; i++)
+                if(bulletLife[i] > 0)
+                g.fillRect(bulletX[i] - 1, bulletY[i] - 1, 2, 2);
             }
         }.start();
 
